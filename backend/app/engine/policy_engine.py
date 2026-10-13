@@ -46,10 +46,30 @@ class PolicyEngine:
         tool_name = action.get("tool_name", "")
         operation = action.get("operation", "")
         parameters = action.get("parameters", {})
-        sensitivity = action.get("sensitivity_level", "INTERNAL").upper()
-        agent_role = action.get("agent_role", "standard_agent").lower()
-        is_reversible = action.get("is_reversible", True)
+        sensitivity = str(action.get("sensitivity_level", "INTERNAL")).upper()
+        agent_role = str(action.get("agent_role", "standard_agent")).lower()
+        is_reversible = bool(action.get("is_reversible", True))
         
+        # Recognized registered tools
+        VALID_TOOLS = {"database_tool", "email_tool", "document_tool", "file_tool"}
+        if tool_name not in VALID_TOOLS:
+            return EvaluationResult(
+                decision="BLOCK",
+                risk_score=90.0,
+                risk_level="CRITICAL",
+                triggered_policies=["SECURITY-GATE-01: Unknown or Unregistered Tool"],
+                explanation=f"BLOCKED: Attempted operation on unregistered or unsupported tool '{tool_name}'."
+            )
+
+        if not operation or not isinstance(operation, str):
+            return EvaluationResult(
+                decision="BLOCK",
+                risk_score=90.0,
+                risk_level="CRITICAL",
+                triggered_policies=["SECURITY-GATE-02: Missing or Invalid Operation"],
+                explanation="BLOCKED: Operation name is missing or invalid."
+            )
+
         triggered_policies = []
         violations = []
         highest_decision = "ALLOW"

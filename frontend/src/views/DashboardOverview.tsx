@@ -6,16 +6,19 @@ import {
   Activity, 
   Clock, 
   Play, 
-  ArrowRight 
+  ArrowRight
 } from 'lucide-react';
 import type { DashboardStats, ActionLog } from '../types';
 import { DecisionBadge } from '../components/Badges';
+import { GatewayVisualization } from '../components/GatewayVisualization';
 
 interface DashboardOverviewProps {
   stats: DashboardStats | null;
   recentActions: ActionLog[];
-  onNavigateTab: (tab: string) => void;
+  onNavigateTab: (tab: string, filter?: string) => void;
   onQuickSimulate: (scenarioId: string) => void;
+  onViewAuditRecord?: (actionId?: string) => void;
+  lastSimResult?: any;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -23,6 +26,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   recentActions,
   onNavigateTab,
   onQuickSimulate,
+  onViewAuditRecord,
+  lastSimResult,
 }) => {
   return (
     <div className="space-y-6">
@@ -31,7 +36,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
-              Safety Control & Policy Enforcement Gateway
+              Safety Control &amp; Policy Enforcement Gateway
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-2xl">
               Actively intercepting autonomous agent operations before tool execution. Enforcing deterministic security policies, protected database schemas, data exfiltration defenses, and human signoff workflows.
@@ -40,14 +45,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => onNavigateTab('simulator')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-medium text-sm shadow-lg shadow-indigo-500/25 hover:opacity-95 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-medium text-sm shadow-lg shadow-indigo-500/25 hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer"
             >
               <Play className="w-4 h-4 fill-white" />
               Run Agent Simulator
             </button>
             <button
               onClick={() => onNavigateTab('approvals')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm border border-slate-700 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 font-medium text-sm border border-slate-700 transition-all cursor-pointer"
             >
               Approval Queue ({stats?.require_approval_count ?? 0})
             </button>
@@ -55,68 +60,109 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* Metrics Cards Grid */}
+      {/* Interactive Gateway Flow Diagram */}
+      <GatewayVisualization
+        lastResult={lastSimResult || (recentActions.length > 0 ? recentActions[0] : null)}
+        onViewAuditRecord={onViewAuditRecord}
+        onNavigateTab={onNavigateTab}
+      />
+
+      {/* Metrics Cards Grid - Clickable Drilldowns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Actions Intercepted */}
-        <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all">
+        <button
+          onClick={() => onNavigateTab('audit')}
+          className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/90 transition-all text-left group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Interceptions</span>
-            <Activity className="w-5 h-5 text-indigo-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 group-hover:text-indigo-300 transition-colors">
+              Total Interceptions
+            </span>
+            <Activity className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-white">{stats?.total_actions ?? 0}</span>
             <span className="text-xs text-slate-400">actions evaluated</span>
           </div>
-          <div className="mt-2 text-xs text-slate-400 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Avg Latency: <strong className="text-cyan-300">{stats?.mean_latency_ms ?? 0} ms</strong></span>
+          <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Avg: <strong className="text-cyan-300">{stats?.mean_latency_ms ?? 0} ms</strong></span>
+            </div>
+            <span className="text-[11px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+              Audit &rarr;
+            </span>
           </div>
-        </div>
+        </button>
 
         {/* Safe Actions Allowed */}
-        <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all">
+        <button
+          onClick={() => onNavigateTab('audit', 'ALLOW')}
+          className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/90 transition-all text-left group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Safe Allowed</span>
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 group-hover:text-emerald-300 transition-colors">
+              Safe Allowed
+            </span>
+            <ShieldCheck className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-emerald-400">{stats?.allowed_count ?? 0}</span>
             <span className="text-xs font-semibold text-emerald-500/90">{stats?.allow_rate ?? 0}% rate</span>
           </div>
-          <div className="mt-2 text-xs text-slate-400">
-            Executed safely in mock sandbox
+          <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <span>Executed in mock sandbox</span>
+            <span className="text-[11px] text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              Filter &rarr;
+            </span>
           </div>
-        </div>
+        </button>
 
         {/* Blocked Threats */}
-        <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all">
+        <button
+          onClick={() => onNavigateTab('threats')}
+          className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-rose-500/50 hover:bg-slate-900/90 transition-all text-left group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Unsafe Blocked</span>
-            <ShieldAlert className="w-5 h-5 text-rose-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 group-hover:text-rose-300 transition-colors">
+              Unsafe Blocked
+            </span>
+            <ShieldAlert className="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-rose-400">{stats?.blocked_count ?? 0}</span>
             <span className="text-xs font-semibold text-rose-500/90">{stats?.block_rate ?? 0}% rate</span>
           </div>
-          <div className="mt-2 text-xs text-slate-400">
-            Prevented from touching business tools
+          <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <span>Prevented tool execution</span>
+            <span className="text-[11px] text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              Threats &rarr;
+            </span>
           </div>
-        </div>
+        </button>
 
         {/* Quarantined for HITL Approval */}
-        <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all">
+        <button
+          onClick={() => onNavigateTab('approvals')}
+          className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-900/90 transition-all text-left group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Held for Approval</span>
-            <AlertTriangle className="w-5 h-5 text-amber-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 group-hover:text-amber-300 transition-colors">
+              Held for Approval
+            </span>
+            <AlertTriangle className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-amber-400">{stats?.require_approval_count ?? 0}</span>
             <span className="text-xs font-semibold text-amber-500/90">{stats?.approval_rate ?? 0}% rate</span>
           </div>
-          <div className="mt-2 text-xs text-slate-400">
-            Human sign-off required prior to run
+          <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <span>Requires human operator sign-off</span>
+            <span className="text-[11px] text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              Queue &rarr;
+            </span>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Quick Launch & Risk Distribution */}

@@ -88,3 +88,56 @@ def test_interceptor_require_approval_sensitive_access(client):
     assert data["tool_executed"] is False
     assert data["status"] == "PENDING_APPROVAL"
     assert data["approval_id"] is not None
+
+def test_interceptor_blocks_unknown_or_unregistered_tool(client, monkeypatch):
+    invoked = False
+    def mock_dispatch(*args, **kwargs):
+        nonlocal invoked
+        invoked = True
+        return {}
+
+    monkeypatch.setattr("app.engine.interceptor_service.ToolDispatcher.dispatch", mock_dispatch)
+
+    payload = {
+        "agent_id": "rogue-agent-01",
+        "agent_role": "unknown",
+        "tool_name": "arbitrary_os_shell_tool",
+        "operation": "execute_shell",
+        "parameters": {"command": "whoami"},
+        "resource_id": "system",
+        "sensitivity_level": "RESTRICTED",
+        "is_reversible": False
+    }
+    response = client.post("/api/intercept", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["decision"] == "BLOCK"
+    assert data["tool_executed"] is False
+    assert invoked is False
+    assert "unregistered" in data["explanation"].lower() or "unsupported" in data["explanation"].lower()
+
+def test_blocked_action_strictly_never_invokes_tool_dispatcher(client, monkeypatch):
+    invoked = False
+    def mock_dispatch(*args, **kwargs):
+        nonlocal invoked
+        invoked = True
+        return {}
+
+    monkeypatch.setattr("app.engine.interceptor_service.ToolDispatcher.dispatch", mock_dispatch)
+
+    payload = {
+        "agent_id": "agent-devops-02",
+        "agent_role": "database_assistant",
+        "tool_name": "database_tool",
+        "operation": "execute_query",
+        "parameters": {"query": "DROP DATABASE production;"},
+        "resource_id": "db-production",
+        "sensitivity_level": "CRITICAL",
+        "is_reversible": False
+    }
+    response = client.post("/api/intercept", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["decision"] == "BLOCK"
+    assert data["tool_executed"] is False
+    assert invoked is False

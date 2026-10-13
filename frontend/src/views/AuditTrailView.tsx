@@ -1,23 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { History, RefreshCw, Search } from 'lucide-react';
 import type { ActionLog } from '../types';
 import { DecisionBadge, RiskBadge } from '../components/Badges';
 
 interface AuditTrailViewProps {
   logs: ActionLog[];
+  initialFilter?: { decision?: string; tool_name?: string };
+  highlightActionId?: string | null;
   onRefreshData: () => void;
   onFilterChange: (filters: { decision?: string; tool_name?: string }) => void;
 }
 
 export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
   logs,
+  initialFilter,
+  highlightActionId,
   onRefreshData,
   onFilterChange,
 }) => {
-  const [selectedDecision, setSelectedDecision] = useState<string>('');
-  const [selectedTool, setSelectedTool] = useState<string>('');
+  const [selectedDecision, setSelectedDecision] = useState<string>(initialFilter?.decision || '');
+  const [selectedTool, setSelectedTool] = useState<string>(initialFilter?.tool_name || '');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [inspectLog, setInspectLog] = useState<ActionLog | null>(null);
+
+  useEffect(() => {
+    if (initialFilter?.decision !== undefined) {
+      setSelectedDecision(initialFilter.decision);
+    }
+    if (initialFilter?.tool_name !== undefined) {
+      setSelectedTool(initialFilter.tool_name);
+    }
+  }, [initialFilter]);
+
+  useEffect(() => {
+    if (highlightActionId) {
+      const match = logs.find((l) => l.id === highlightActionId);
+      if (match) {
+        setInspectLog(match);
+      }
+    }
+  }, [highlightActionId, logs]);
 
   const handleDecisionFilter = (val: string) => {
     setSelectedDecision(val);

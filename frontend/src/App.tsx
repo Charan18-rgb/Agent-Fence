@@ -55,11 +55,32 @@ export function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const [auditFilter, setAuditFilter] = useState<{ decision?: string; tool_name?: string }>({});
+  const [highlightActionId, setHighlightActionId] = useState<string | null>(null);
+  const [lastSimResult, setLastSimResult] = useState<any | null>(null);
+
+  const handleNavigateTab = (tab: string, filterDecision?: string) => {
+    if (filterDecision) {
+      setAuditFilter({ decision: filterDecision });
+    }
+    setCurrentTab(tab);
+  };
+
+  const handleViewAuditRecord = (actionId?: string) => {
+    if (actionId) {
+      setHighlightActionId(actionId);
+    }
+    setCurrentTab('audit');
+  };
+
   const handleQuickSimulate = async (scenarioId: string) => {
     try {
-      await runScenario(scenarioId);
+      const result = await runScenario(scenarioId);
+      if (result && result.results && result.results.length > 0) {
+        setLastSimResult(result.results[result.results.length - 1]);
+      }
       await loadAllData();
-      setCurrentTab('simulator');
+      setCurrentTab('dashboard');
     } catch (err) {
       console.error('Failed to trigger quick simulation', err);
     }
@@ -69,7 +90,10 @@ export function App() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       <Navbar
         currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
+        setCurrentTab={(tab) => {
+          if (tab !== 'audit') setAuditFilter({});
+          setCurrentTab(tab);
+        }}
         pendingApprovalsCount={approvals.length}
       />
 
@@ -84,8 +108,10 @@ export function App() {
               <DashboardOverview
                 stats={stats}
                 recentActions={auditLogs}
-                onNavigateTab={setCurrentTab}
+                onNavigateTab={handleNavigateTab}
                 onQuickSimulate={handleQuickSimulate}
+                onViewAuditRecord={handleViewAuditRecord}
+                lastSimResult={lastSimResult}
               />
             )}
 
@@ -106,8 +132,13 @@ export function App() {
             {currentTab === 'audit' && (
               <AuditTrailView
                 logs={auditLogs}
+                initialFilter={auditFilter}
+                highlightActionId={highlightActionId}
                 onRefreshData={() => loadAllData()}
-                onFilterChange={(filters) => loadAllData(filters)}
+                onFilterChange={(filters) => {
+                  setAuditFilter(filters);
+                  loadAllData(filters);
+                }}
               />
             )}
 

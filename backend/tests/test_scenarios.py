@@ -38,6 +38,46 @@ def test_run_scenario_4_suspicious_sequence(client):
     # Step 3: irreversible delete_file -> REQUIRE_APPROVAL
     assert data["results"][2]["decision"] == "REQUIRE_APPROVAL"
 
+def test_policy_toggle_modifies_interceptor_decisions(client):
+    # Verify exfiltration is BLOCKED initially
+    exfil_payload = {
+        "agent_id": "agent-toggle-test",
+        "agent_role": "analyst",
+        "tool_name": "email_tool",
+        "operation": "send_email",
+        "parameters": {
+            "recipient": "external@untrusted-domain.com",
+            "attachment_ids": ["doc-conf-88"]
+        },
+        "resource_id": "doc-conf-88",
+        "sensitivity_level": "CONFIDENTIAL",
+        "is_reversible": False
+    }
+    r1 = client.post("/api/intercept", json=exfil_payload)
+    assert r1.status_code == 200
+    assert r1.json()["decision"] == "BLOCK"
+
+    # Disable POL-DATA-EXFIL-03 policy
+    toggle_res = client.patch(
+        "/api/policies/POL-DATA-EXFIL-03/toggle",
+        json={"is_active": False}
+    )
+    assert toggle_res.status_code == 200
+    assert toggle_res.json()["is_active"] is False
+
+    # Intercept again with policy disabled -> decision will no longer be BLOCK by that policy
+    r2 = client.post("/api/intercept", json=exfil_payload)
+    assert r2.status_code == 200
+    assert r2.json()["decision"] != "BLOCK"
+
+    # Restore policy to active state
+    restore_res = client.patch(
+        "/api/policies/POL-DATA-EXFIL-03/toggle",
+        json={"is_active": True}
+    )
+    assert restore_res.status_code == 200
+    assert restore_res.json()["is_active"] is True
+
 def test_metrics_and_telemetry_accuracy(client):
     res = client.get("/api/stats")
     assert res.status_code == 200
@@ -48,4 +88,3 @@ def test_metrics_and_telemetry_accuracy(client):
     assert 0 <= stats["approval_rate"] <= 100
     # Verification of evaluation latency
     assert stats["mean_latency_ms"] >= 0.0
-    print(f"\n[BENCHMARK] Total Evaluated Actions: {stats['total_actions']}, Allow Rate: {stats['allow_rate']}%, Block Rate: {stats['block_rate']}%, Mean Latency: {stats['mean_latency_ms']} ms")

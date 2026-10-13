@@ -53,7 +53,6 @@ def test_approval_workflow_reject(client):
     approval_id = intercept_res.json()["approval_id"]
     assert approval_id is not None
 
-    # Review and REJECT
     reject_payload = {
         "decision": "REJECTED",
         "reviewer": "security_admin_bob",
@@ -65,3 +64,56 @@ def test_approval_workflow_reject(client):
     assert data["decision"] == "REJECTED"
     assert data["action_status"] == "REJECTED_BY_HUMAN"
     assert data["tool_result"]["status"] == "REJECTED_BY_HUMAN"
+
+def test_approval_cannot_be_reviewed_twice(client):
+    intercept_payload = {
+        "agent_id": "agent-contractor-04",
+        "agent_role": "contractor",
+        "tool_name": "document_tool",
+        "operation": "read_document",
+        "parameters": {"document_id": "doc-conf-99"},
+        "resource_id": "doc-conf-99",
+        "sensitivity_level": "CONFIDENTIAL",
+        "is_reversible": True
+    }
+    res = client.post("/api/intercept", json=intercept_payload)
+    approval_id = res.json()["approval_id"]
+
+    # First review
+    first_review = client.post(
+        f"/api/approvals/{approval_id}/review",
+        json={"decision": "APPROVED", "reviewer": "admin_alice"}
+    )
+    assert first_review.status_code == 200
+
+    # Second review attempt must fail with 400
+    second_review = client.post(
+        f"/api/approvals/{approval_id}/review",
+        json={"decision": "APPROVED", "reviewer": "admin_eve"}
+    )
+    assert second_review.status_code == 400
+    assert "already been processed" in second_review.json()["detail"].lower()
+
+def test_approval_executes_only_originally_reviewed_action(client):
+    original_params = {"document_id": "doc-conf-99"}
+    intercept_payload = {
+        "agent_id": "agent-contractor-05",
+        "agent_role": "contractor",
+        "tool_name": "document_tool",
+        "operation": "read_document",
+        "parameters": original_params,
+        "resource_id": "doc-conf-99",
+        "sensitivity_level": "CONFIDENTIAL",
+        "is_reversible": True
+    }
+    res = client.post("/api/intercept", json=intercept_payload)
+    approval_id = res.json()["approval_id"]
+
+    # Approve
+    review_res = client.post(
+        f"/api/approvals/{approval_id}/review",
+        json={"decision": "APPROVED", "reviewer": "admin_carol", "reason": "Verified audit"}
+    )
+    assert review_res.status_code == 200
+    result_data = review_res.json()
+    assert result_data["tool_result"]["document_id"] == "doc-conf-99"
