@@ -72,7 +72,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
             Audit Trail &amp; Telemetry Inspector
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Complete, tamper-evident log of intercepted agent tool requests, evaluation decisions, and execution outcomes.
+            Complete audit log of intercepted agent tool requests, evaluation decisions, and execution outcomes.
           </p>
         </div>
         <button

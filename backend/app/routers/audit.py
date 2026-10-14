@@ -17,7 +17,7 @@ def get_audit_trail(
     db: Session = Depends(get_db)
 ):
     """
-    Returns the comprehensive, tamper-evident audit trail of all evaluated actions,
+    Returns the comprehensive audit trail of all evaluated actions,
     along with their risk scores, decisions, policy violations, and execution outcomes.
     """
     query = db.query(ActionLog)

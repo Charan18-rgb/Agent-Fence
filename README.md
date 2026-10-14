@@ -56,7 +56,7 @@ AgentFence is a policy-governed safety gateway that monitors, intercepts, and co
 | Module | Status | Description |
 | :--- | :---: | :--- |
 | **Action Interceptor** | **Implemented** | Synchronously intercepts all agent tool requests via `POST /api/intercept`. Computes risk score, latency, and enforcement decision. |
-| **Policy & Risk Engine** | **Implemented** | 100% deterministic, transparent heuristic engine evaluating sensitivity, agent permissions, reversibility, and target domains. |
+| **Policy & Risk Engine** | **Implemented** | Fully deterministic, transparent heuristic engine evaluating sensitivity, agent permissions, reversibility, and target domains. |
 | **Mock Business Tools** | **Implemented** | Safe simulations for Documents, Database queries, Email sending, and File operations. Blocked actions are strictly prevented from reaching mock tools. |
 | **Human Approval (HITL)** | **Implemented** | Holds high-sensitivity actions in quarantine. Operators can inspect parameters, approve to dispatch, or reject. |
 | **Audit Log & Telemetry** | **Implemented** | Logging of evaluated requests with measured processing latency, risk tiers, and policy rationale. |
@@ -95,7 +95,7 @@ Tests executed via `pytest`:
   - Valid safe actions in the test suite are evaluated and allowed.
   - Known malicious and destructive test cases (SQL schema drops, external exfiltration, unregistered tools) are blocked prior to tool invocation.
   - Quarantined approval actions remain pending until an operator explicitly approves or rejects them.
-  - Approved actions execute using the originally submitted, immutable parameters.
+  - Approved actions execute using the originally submitted action parameters without modification.
   - Actions cannot be approved or rejected more than once.
 - **Measured Evaluation Latency:** Between ~0.5 ms and ~2.5 ms per evaluation during test runs.
 - **Frontend Production Build:** Verified via Vite TypeScript compiler (`tsc -b && vite build`) with 0 errors.
